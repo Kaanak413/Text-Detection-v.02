@@ -2,25 +2,24 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++17
+CONFIG += c++14
 
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-INCLUDEPATH += ..\build-untitled3-Desktop_Qt_5_14_0_MSVC2015_64bit-Release\opencvinclude
-LIBS +=-L..\build-untitled3-Desktop_Qt_5_14_0_MSVC2015_64bit-Release\opencvlib\
--lopencv_core2413\
--lopencv_imgproc2413\
--lopencv_highgui2413
+# Uncomment to disable deprecated APIs if using Qt 6.0.0 or higher
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
+# Include paths for vcpkg packages
+INCLUDEPATH += $$[VCPKG_ROOT]/installed/x64-windows/include
+INCLUDEPATH += $$[VCPKG_ROOT]/installed/x64-windows/include/tesseract
+INCLUDEPATH += $$[VCPKG_ROOT]/installed/x64-windows/include/opencv2
 
-INCLUDEPATH +=..\build-untitled3-Desktop_Qt_5_14_0_MSVC2015_64bit-Release\tessinclude
-LIBS +=-L..\build-untitled3-Desktop_Qt_5_14_0_MSVC2015_64bit-Release\tesslib\
--ltesseract41\
--lleptonica-1.82.0
+# Library paths for vcpkg packages
+LIBS += -L$$[VCPKG_ROOT]/installed/x64-windows/lib \
+        -ltesseract \
+        -lopencv_core \
+        -lopencv_imgproc \
+        -lopencv_highgui
 
-
-
+LIBS += -lleptonica
 
 SOURCES += \
     main.cpp \
@@ -34,10 +33,11 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-
+QMAKE_LFLAGS += -v
 
 DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += TESSDATA_PREFIX=\\\"..//untitled3//tessdata/\\\"
+DEFINES += TESSDATA_PREFIX=\\\"..//untitled3//tessdata/\\\"\
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

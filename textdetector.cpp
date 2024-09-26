@@ -1,78 +1,176 @@
 #include "textdetector.h"
-using namespace cv ;
-void textdetector::textdetection(std::string file_name,float k,std::string lang)
+using namespace cv;
+
+void textdetector::setPILevel(int level)
 {
-    Mat img;
-    img = imread(file_name);
-    tesseract::TessBaseAPI *api = new tesseract::TessBaseAPI();
-     // Initialize tesseract-ocr with English, with specifying tessdata path
-     if (api->Init(TESSDATA_PREFIX, lang.c_str())) {
-
-         exit(1);
-     }
-
-
-
- Pix *image = pixRead(file_name.c_str());
-
-     api->SetImage(image);
-
-     api->Recognize(0);
-
- tesseract::ResultIterator* ri=api->GetIterator();//Get the GetIterator func from the api.
- tesseract::PageIteratorLevel level = tesseract::RIL_WORD;
- if (ri != 0) {//If a word found,
-         do {
-             //const char* word = ri->GetUTF8Text(level);//Give the word in UTF8Text format
-             float conf = ri->Confidence(level);//Its confidence level
-             int x1, y1, x2, y2;
-             ri->BoundingBox(level, &x1, &y1, &x2, &y2);//In that instance of iteration,this gives the BoundingBox locations of that word.
-
-             // k is the user input.
-             if(conf>k){
-                 cv::Point pt1(x1, y1);//Make the Boundingbox points as cv::Point to make rectangle
-                 cv::Point pt2(x2, y2);//
-                 cv::rectangle(img, pt1, pt2, cv::Scalar(0, 255, 0), 1, 8, 0);//Draw rectangle,If confidence level of that word is higher than the user input confidence level.
-                 //Give these "thresholded" words to the richTextbox
-                 // inputStr += resultStr;
-             }
-
-
-
-         } while (ri->Next(level));
-     cv::imwrite("Result122.png", img);
-
-
-
-     }
-
-
+    mLevel = tesseract::PageIteratorLevel(level);
 }
-void textdetector::extractText(std::string file_name,std::string lang){
-    char *outText;
+
+tesseract::PageIteratorLevel textdetector::getPILevel()
+{
+    return mLevel;
+}
+
+void textdetector::setDetectionLevel(float level)
+{
+    detectLevel = level;
+}
+
+float textdetector::getDetectionLevel()
+{
+    return detectLevel;
+}
+
+void textdetector::setLanguage(const std::string& lang)
+{
+    mLanguage = lang;
+}
+
+std::string textdetector::getLanguage()
+{
+    return mLanguage;
+}
+
+tesseract::TessBaseAPI* textdetector::getApi()
+{
+    return mApi;
+}
+
+void textdetector::textdetection(const std::string& file_name)
+{
+    // Load the image
+    if (file_name.size() == 0)
+    {
+        return;
+    }
     Mat im = cv::imread(file_name, IMREAD_COLOR);
-    tesseract::TessBaseAPI *api = new tesseract::TessBaseAPI();
-    if (api->Init(TESSDATA_PREFIX, lang.c_str())) {
+   
+    if (im.empty())
+    {
+        std::cerr << "Could not open or find the image: " << file_name << std::endl;
+        return;
+    }
 
-             exit(1);
-         }
+    std::string currentLang;
+    if (mLanguageMap.find(getLanguage()) == mLanguageMap.end())
+    {
+        std::cout << getLanguage() << " :is not present" << std::endl;
+    }
+    else
+    {
+        currentLang = mLanguageMap[getLanguage()];
+    }
+    // Initialize tesseract
+    if (getApi()->Init(NULL, currentLang.c_str(), tesseract::OEM_LSTM_ONLY))
+    {
+        std::cerr << "Could not initialize tesseract with language: " << getLanguage() << std::endl;
+        return;
+    }
 
-    api->SetImage(im.data, im.cols, im.rows, 3, im.step);
-    outText = (api->GetUTF8Text());
+    getApi()->SetImage(im.data, im.cols, im.rows, 3, im.step);
+   
+    getApi()->Recognize(0);
+    getApi()->SetPageSegMode(tesseract::PSM_SINGLE_LINE);
 
-    api->End();
-
-
-
-   std::ofstream outfile ("OCR-RESULTS.txt");
-
-    outfile <<outText << std::endl;
-
-    outfile.close();
-    delete []outText;
+    getApi()->ClearAdaptiveClassifier();
 
 
+    tesseract::ResultIterator* ri = getApi()->GetIterator();
+    if (ri != nullptr)
+    {
+        do
+        {
+            const char* word = ri->GetUTF8Text(getPILevel());
+            float conf = ri->Confidence(getPILevel()); // Confidence level
+            int x1, y1, x2, y2;
+            ri->BoundingBox(getPILevel(), &x1, &y1, &x2, &y2); // Get the bounding box coordinates
 
+            if (conf > getDetectionLevel())
+            {
+                // Draw a rectangle around the word with confidence higher than the threshold
+                cv::rectangle(im, Point(x1, y1), Point(x2, y2), getRGB(), 1, 8, 0);
+            }
+            
+        } while (ri->Next(getPILevel()));
 
+        
+    }
+    setProcessedImg(im);
+    delete ri;
+    
+}
 
+void textdetector::extractText(const std::string& file_name)
+{
+    // Load the image
+    if (file_name.size()==0)
+    {
+        return;
+    }
+    Mat im = cv::imread(file_name, IMREAD_COLOR);
+    cv::imwrite("img.png", im);
+    im = cv::imread("img.png");
+    if (im.empty())
+    {
+        std::cerr << "Could not open or find the image: " << file_name << std::endl;
+        return;
+    }
+    std::string currentLang ;
+    if (mLanguageMap.find(getLanguage()) == mLanguageMap.end())
+    {
+        std::cout << getLanguage() << " :is not present" << std::endl;
+    }
+    else
+    {
+        currentLang = mLanguageMap[getLanguage()];
+    }
+    // Initialize tesseract
+    if (getApi()->Init(NULL, currentLang.c_str(), tesseract::OEM_LSTM_ONLY))
+    {
+        std::cerr << "Could not initialize tesseract with language: " << getLanguage() << std::endl;
+        return;
+    }
+    
+    // Set image for OCR
+    getApi()->SetImage(im.data, im.cols, im.rows, 3, im.step);
+    getApi()->SetPageSegMode(tesseract::PSM_AUTO);
+    getApi()->ClearAdaptiveClassifier();
+
+    // Get the OCR result
+    mOutText = getApi()->GetUTF8Text();
+    if (!mOutText)
+    {
+        std::cerr << "Error during OCR." << std::endl;
+        return;
+    }
+}
+
+void textdetector::setOutText(char* txt)
+{
+    mOutText = txt;
+}
+
+char* textdetector::getOutText()
+{
+    return mOutText;
+}
+
+void textdetector::setProcessedImg(cv::Mat img)
+{
+    mProcessedImg = img;
+}
+
+cv::Mat textdetector::getProcessedImg()
+{
+    return mProcessedImg;
+}
+
+void textdetector::setRGB(double R, double G, double B)
+{
+    RGB = {R,G,B};
+}
+
+cv::Scalar textdetector::getRGB()
+{
+    return RGB;
 }

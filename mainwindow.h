@@ -1,8 +1,21 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
+
+#include "textdetector.h"
 #include <QMainWindow>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QDateTime>
+#include <QLabel>
+#include <QPixmap>
+#include <QTimer>
+#include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include <QPlainTextEdit>
 
-
+#include<QTextStream>
+#include<QFile>
+#include <QColorDialog>
 
 
 QT_BEGIN_NAMESPACE
@@ -13,7 +26,9 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public slots:
-    void DisplayImage(QString path);
+    void DisplayImage(cv::Mat img, QLabel* label);
+    void comboboxItemChanged(QString);
+    void confidenceLevelChanged();
 
 
 public:
@@ -22,9 +37,24 @@ public:
     QImage imdisplay;
     QTimer* Timer;
 
+    void setConfLevel(int lvl);
+    int getConfLevel();
+
+    void setLang(QString lang);
+    QString getLang();
+
+    void setPath(std::string path);
+    std::string getPath();
+
+    void update(textdetector* detector);
+
+    void saveAsTxtFile(QPlainTextEdit* plainTextEdit, QWidget* parent);
+    void saveAsImgFile(QLabel* imageLabel, QWidget* parent);
 
 private slots:
     void on_pushButton_clicked();
+    void on_pushButton_SaveTxt_clicked();
+    void on_pushButton_SaveImageFile_clicked();
 
 
 
@@ -32,9 +62,10 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-
-
+    textdetector* mTextDetector;
+    QString mLanguage;
+    int mConfidenceLevel;
+    std::string mCurrentPath;
 
 
 };
-#endif // MAINWINDOW_H
