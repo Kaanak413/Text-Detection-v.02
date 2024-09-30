@@ -46,14 +46,20 @@
     <ClCompile Include="textdetector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="textdetectorRealTime.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="mainwindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="textdetector.h">
+    <QtMoc Include="textdetectorRealTime.h">
+      <Filter>Generated Files</Filter>
+    </QtMoc>
+    <QtMoc Include="textdetector.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">

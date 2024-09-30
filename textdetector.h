@@ -9,19 +9,15 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include <QObject>
 
-class textdetector
+
+class textdetector : public QObject
 {
+    Q_OBJECT  // Macro required for signal-slot mechanism
 public:
-    textdetector()
-    {
-        mApi = new tesseract::TessBaseAPI();
-        setPILevel(tesseract::PageIteratorLevel::RIL_WORD);
-        mLanguageMap["English"] = "eng";
-        mLanguageMap["Deutch"] = "deu";
-        mLanguageMap["French"] = "fra";
-        mLanguageMap["Turkish"] = "tur";
-    }
+    explicit textdetector(QObject* parent = nullptr);
+    
 
     ~textdetector()
     {
@@ -55,16 +51,16 @@ public:
     
     void setRGB(double R, double G, double B);
     cv::Scalar getRGB();
-
-private:
+    std::unordered_map<std::string, std::string> mLanguageMap;
+protected:
     tesseract::TessBaseAPI* mTesseractAPI;   // Instance-specific API object
     tesseract::ResultIterator* ri;           // Result iterator
     tesseract::PageIteratorLevel mLevel;     // Page iterator level
     std::string mLanguage = "eng";           // Default language
-    float detectLevel = 75;                  // Default detection level
+    float detectLevel = 25;                  // Default detection level
     tesseract::TessBaseAPI* mApi;            // Static/shared API object
+protected:
     char* mOutText  = nullptr;
-    std::unordered_map<std::string, std::string> mLanguageMap;
     cv::Mat mProcessedImg;
     cv::Scalar RGB = {0,0,0};
 };

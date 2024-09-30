@@ -48,6 +48,7 @@ public:
     QPushButton *pushButton_SaveTxt;
     QPushButton *pushButton_SaveImageFile;
     QToolButton *toolButtonChangeColor;
+    QPushButton *pushButtonStartStopDetection;
     QMenuBar *menubar;
     QStatusBar *statusbar;
 
@@ -55,7 +56,7 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
-        MainWindow->resize(1354, 833);
+        MainWindow->resize(1340, 730);
         QFont font;
         font.setFamilies({QString::fromUtf8("Arial")});
         font.setBold(true);
@@ -69,17 +70,17 @@ public:
         display_image->setMaximumSize(QSize(640, 480));
         pushButton = new QPushButton(centralwidget);
         pushButton->setObjectName("pushButton");
-        pushButton->setGeometry(QRect(280, 680, 631, 71));
+        pushButton->setGeometry(QRect(250, 610, 381, 71));
         display_image2 = new QLabel(centralwidget);
         display_image2->setObjectName("display_image2");
         display_image2->setGeometry(QRect(641, 0, 640, 480));
         display_image2->setMaximumSize(QSize(640, 480));
         textEdit_3 = new QTextEdit(centralwidget);
         textEdit_3->setObjectName("textEdit_3");
-        textEdit_3->setGeometry(QRect(10, 500, 211, 201));
+        textEdit_3->setGeometry(QRect(10, 500, 211, 191));
         plainTextEdit = new QPlainTextEdit(centralwidget);
         plainTextEdit->setObjectName("plainTextEdit");
-        plainTextEdit->setGeometry(QRect(720, 490, 471, 181));
+        plainTextEdit->setGeometry(QRect(710, 490, 471, 181));
         splitter_3 = new QSplitter(centralwidget);
         splitter_3->setObjectName("splitter_3");
         splitter_3->setGeometry(QRect(250, 500, 331, 81));
@@ -124,11 +125,14 @@ public:
         splitter_5->addWidget(pushButton_SaveImageFile);
         toolButtonChangeColor = new QToolButton(centralwidget);
         toolButtonChangeColor->setObjectName("toolButtonChangeColor");
-        toolButtonChangeColor->setGeometry(QRect(1200, 580, 101, 41));
+        toolButtonChangeColor->setGeometry(QRect(1190, 570, 121, 41));
+        pushButtonStartStopDetection = new QPushButton(centralwidget);
+        pushButtonStartStopDetection->setObjectName("pushButtonStartStopDetection");
+        pushButtonStartStopDetection->setGeometry(QRect(1190, 610, 121, 51));
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");
-        menubar->setGeometry(QRect(0, 0, 1354, 21));
+        menubar->setGeometry(QRect(0, 0, 1340, 21));
         MainWindow->setMenuBar(menubar);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName("statusbar");
@@ -184,6 +188,7 @@ public:
         pushButton_SaveTxt->setText(QCoreApplication::translate("MainWindow", "Save As Text File", nullptr));
         pushButton_SaveImageFile->setText(QCoreApplication::translate("MainWindow", "Save As Image File", nullptr));
         toolButtonChangeColor->setText(QCoreApplication::translate("MainWindow", "Change Color", nullptr));
+        pushButtonStartStopDetection->setText(QCoreApplication::translate("MainWindow", "RealTime Detection", nullptr));
     } // retranslateUi
 
 };

@@ -1,6 +1,17 @@
 #include "textdetector.h"
 using namespace cv;
 
+textdetector::textdetector(QObject* parent)
+{
+    mApi = new tesseract::TessBaseAPI();
+    setPILevel(tesseract::PageIteratorLevel::RIL_WORD);
+    mLanguageMap["English"] = "eng";
+    mLanguageMap["Deutch"] = "deu";
+    mLanguageMap["French"] = "fra";
+    mLanguageMap["Turkish"] = "tur";
+    setRGB(0, 255, 0);
+}
+
 void textdetector::setPILevel(int level)
 {
     mLevel = tesseract::PageIteratorLevel(level);

@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include "qthread.h"
 
 using namespace cv;
 
@@ -14,22 +14,32 @@ MainWindow::MainWindow(QWidget *parent)
     Timer = new QTimer(this);
 
     connect(Timer, SIGNAL(timeout()), this, SLOT(DisplayImage()));
-    connect(ui->comboBoxLanguageSelection, SIGNAL(currentTextChanged(QString)), this, SLOT(comboboxItemChanged(QString)));
-    connect(ui->doubleSpinBoxConfidenceLevel, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWindow::confidenceLevelChanged);
-
-    ui->comboBoxLanguageSelection->addItem("English");
+    
     ui->comboBoxLanguageSelection->addItem("Deutch");
+    ui->comboBoxLanguageSelection->addItem("English");
     ui->comboBoxLanguageSelection->addItem("French");
     ui->comboBoxLanguageSelection->addItem("Turkish");
-    mTextDetector = new textdetector();
-    ui->doubleSpinBoxConfidenceLevel->setValue(mTextDetector->getDetectionLevel());
 
+    mTextDetector = new textdetector(nullptr);
+    mTextDetectorRealTime = new textdetectorRealTime(nullptr,0);
+    
+    ui->doubleSpinBoxConfidenceLevel->setValue(mTextDetector->getDetectionLevel());
     auto dialog = new QColorDialog();
     dialog->setWindowFlags(Qt::Widget);
     dialog->setOptions(QColorDialog::DontUseNativeDialog | QColorDialog::ShowAlphaChannel);
     ui->toolButtonChangeColor->setStatusTip(tr("Choose fill color"));
     ui->toolButtonChangeColor->setPopupMode(QToolButton::InstantPopup);
-    
+
+    floatingLabelImgOriginal = new QLabel;
+    floatingLabelImgProcessed = new QLabel;
+
+    floatingLabelImgOriginal->setAttribute(Qt::WA_TranslucentBackground);
+    floatingLabelImgOriginal->setWindowFlags(Qt::Window);
+    floatingLabelImgOriginal->hide();
+
+    floatingLabelImgProcessed->setAttribute(Qt::WA_TranslucentBackground);
+    floatingLabelImgProcessed->setWindowFlags(Qt::Window);
+    floatingLabelImgProcessed->hide();
 
     connect(ui->toolButtonChangeColor, &QPushButton::clicked, [this, dialog]() {
         // Open the QColorDialog
@@ -38,14 +48,61 @@ MainWindow::MainWindow(QWidget *parent)
         // If a valid color was selected, update the label and background
         if (selectedColor.isValid()) {
             QRgb selectedRgb = selectedColor.rgb();
-            mTextDetector->setRGB(qRed(selectedRgb), qGreen(selectedRgb),qBlue(selectedRgb));
+            mTextDetector->setRGB(qRed(selectedRgb), qGreen(selectedRgb), qBlue(selectedRgb));
+            update(mTextDetector);
+            mTextDetectorRealTime->setRGB(qRed(selectedRgb), qGreen(selectedRgb), qBlue(selectedRgb));
         }
         });
     
+    connect(ui->pushButtonStartStopDetection, &QPushButton::clicked, this, &MainWindow::toggleRealTimeDetection);
+    connect(Timer, SIGNAL(timeout()), this, SLOT(DisplayImage()));
+    connect(ui->comboBoxLanguageSelection, SIGNAL(currentTextChanged(QString)), this, SLOT(comboboxItemChanged(QString)));
+    connect(ui->doubleSpinBoxConfidenceLevel, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWindow::confidenceLevelChanged);
+    connect(mTextDetectorRealTime, &textdetectorRealTime::newFrameProcessed, this, &MainWindow::onNewFrame);
+    connect(mTextDetectorRealTime, &textdetectorRealTime::wordsProcessed, this, &MainWindow::onNewWords);
+    ui->comboBoxLanguageSelection->setCurrentText("English");
 
     Timer->start();
 }
+void MainWindow::onNewFrame(cv::Mat const &frame) {
+    
+    ui->plainTextEdit->setPlainText(mTextDetectorRealTime->getOutText());
 
+    DisplayImage(frame, floatingLabelImgProcessed);  // Call DisplayImage whenever a new frame is received
+}
+void MainWindow::onNewWords(const QString &text)
+{
+    
+    ui->plainTextEdit->setPlainText(text);
+    
+}
+
+void MainWindow::toggleRealTimeDetection()
+{
+    if (!mRealTimeDetection) {
+        float k = getConfLevel();
+        QString language = getLang();
+        std::string lang = language.toStdString();
+
+        mTextDetectorRealTime->setDetectionLevel(k);
+        mTextDetectorRealTime->setLanguage(lang);
+
+        
+        ui->pushButtonStartStopDetection->setText("Stop Detection");
+        if (mTextDetectorRealTime->openCamera(0))
+        {
+            mTextDetectorRealTime->startCameraThread();
+        }
+    }
+    else {
+        
+        ui->pushButtonStartStopDetection->setText("Start Detection");
+        
+         mTextDetectorRealTime->stopCameraThread();
+        
+    }
+    mRealTimeDetection = !mRealTimeDetection;
+}
 MainWindow::~MainWindow()
 {
     delete mTextDetector;
@@ -81,10 +138,15 @@ void MainWindow::DisplayImage(cv::Mat img,QLabel* label){
     {
         return;
     }
-    cv::resize(img, img, Size(640, 480), 0, 0, INTER_LINEAR);
     
-    QImage imdisplay((uchar*)img.data, img.cols, img.rows, img.step, QImage::Format_RGB888);
+    cv::Mat rgbImg;
+    cv::cvtColor(img, rgbImg, cv::COLOR_BGR2RGB);
+
+    QImage imdisplay((uchar*)rgbImg.data, rgbImg.cols, rgbImg.rows, rgbImg.step, QImage::Format_RGB888);
+    
     label->setPixmap(QPixmap::fromImage(imdisplay));
+    label->adjustSize();
+    label->show();
 
 }
 
@@ -105,7 +167,7 @@ void MainWindow::on_pushButton_clicked()
     cv::Mat img = imread(path);
     setPath(path);
 
-    DisplayImage(img,this->ui->display_image);
+    DisplayImage(img, floatingLabelImgOriginal);
 
 
     mTextDetector->setDetectionLevel(k);
@@ -114,8 +176,8 @@ void MainWindow::on_pushButton_clicked()
     mTextDetector->textdetection(getPath());
 
     ui->plainTextEdit->setPlainText(mTextDetector->getOutText());
-
-    DisplayImage(mTextDetector->getProcessedImg(),this->ui->display_image2);
+    mLastUsedImg = mTextDetector->getProcessedImg();
+    DisplayImage(mTextDetector->getProcessedImg(), floatingLabelImgProcessed);
 
 
 }
@@ -130,7 +192,7 @@ void MainWindow::update(textdetector* detector)
     detector->extractText(getPath());
     detector->textdetection(getPath());
     ui->plainTextEdit->setPlainText(detector->getOutText());
-    DisplayImage(detector->getProcessedImg(), ui->display_image2);
+    DisplayImage(detector->getProcessedImg(), floatingLabelImgProcessed);
 }
 
 void MainWindow::on_pushButton_SaveTxt_clicked()
@@ -140,19 +202,34 @@ void MainWindow::on_pushButton_SaveTxt_clicked()
 
 void MainWindow::on_pushButton_SaveImageFile_clicked()
 {
-    saveAsImgFile(this->ui->display_image2, this);
+    saveAsImgFile(mLastUsedImg, this);
 }
 
 void MainWindow::comboboxItemChanged(QString)
 {
     setLang(ui->comboBoxLanguageSelection->currentText());
-    update(mTextDetector);
+    if (mRealTimeDetection)
+    {
+        update(mTextDetector);
+    }
+    else
+    {
+        update(mTextDetectorRealTime);
+    }
+    
 }
 
 void MainWindow::confidenceLevelChanged()
 {
     setConfLevel(ui->doubleSpinBoxConfidenceLevel->value());
-    update(mTextDetector);
+    if(mRealTimeDetection)
+    {
+        update(mTextDetector);
+    }
+    else
+    {
+        update(mTextDetectorRealTime);
+    }
 }
 
 void MainWindow::saveAsTxtFile(QPlainTextEdit* plainTextEdit, QWidget* parent)
@@ -189,13 +266,13 @@ void MainWindow::saveAsTxtFile(QPlainTextEdit* plainTextEdit, QWidget* parent)
     }
     
 }
-void MainWindow::saveAsImgFile(QLabel* imageLabel, QWidget* parent) 
+void MainWindow::saveAsImgFile(cv::Mat const & mat, QWidget* parent) 
 {
     // Fetch the QPixmap directly (no pointer)
-    QPixmap pixmap = imageLabel->pixmap();
+    
 
     // Ensure there is a valid pixmap in the QLabel
-    if (pixmap.isNull()) {
+    if (mat.empty()) {
         QMessageBox::warning(parent, "Error", "No image to save!");
         return;
     }
@@ -212,7 +289,7 @@ void MainWindow::saveAsImgFile(QLabel* imageLabel, QWidget* parent)
     }
 
     // Save the pixmap to the specified file
-    if (!pixmap.save(filePath)) {
+    if (!cv::imwrite(filePath.toStdString(), mat)) {
         QMessageBox::warning(parent, "Error", "Failed to save the image!");
     }
 }
